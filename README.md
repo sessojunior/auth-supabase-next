@@ -1,6 +1,6 @@
-# Autenticação com Next.js e Supabase
+# Autenticação com Next.js e Supabase e CRUD de tarefas
 
-Este projeto utiliza o Supabase, React Hook Form, Zod, Shadcn/UI para criar um sistema de autenticação com Next.js, utilizando validações nos formulários.
+Este projeto utiliza o Supabase, React Hook Form, Zod, Shadcn/UI para criar um sistema de autenticação com Next.js, utilizando validações nos formulários. Também permite o gerenciamento completo de tarefas com um CRUD após o login.
 
 ## Requisitos do sistema
 
@@ -191,6 +191,61 @@ No Next.js, o controle de rotas privadas é feito utilizando um middleware para 
 
 O middleware **src/middleware.ts** é para proteger as rotas **/admin** e **/dashboard**.
 
+## 5. CRUD de tarefas
+
+Abaixo, está a estrutura que vamos seguir para o CRUD de tarefas:
+
+1. **Página de Listagem**: Lista todas as tarefas do usuário.
+2. **Página de Criação**: Permite a criação de novas tarefas.
+3. **Página de Visualização**: Exibe detalhes de uma tarefa específica.
+4. **Página de Edição**: Permite editar uma tarefa existente.
+5. **Exclusão de Tarefas**: Adiciona a opção de excluir uma tarefa.
+
+### Estrutura da Tabela tasks no Supabase
+
+Certifique-se de que a tabela tasks tenha a seguinte estrutura no Supabase:
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  user_id UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);
+```
+
+### 5.1 Página de Listagem de Tarefas
+
+Página **src/app/tasks/page.tsx** lista todas as tarefas criadas pelo usuário autenticado.
+
+Exibe uma lista de tarefas com links para cada tarefa individual. Ao clicar em uma tarefa, o usuário é levado à página de detalhes.
+
+### 5.2 Página de Criação de Tarefas
+
+Página **src/app/tasks/new/page.tsx** permite ao usuário criar uma nova tarefa, preenchendo os campos de título e descrição.
+
+Essa página contém um formulário com React Hook Form, onde o usuário insere o título e a descrição da tarefa.
+
+### 5.3 Página de Visualização de Tarefas
+
+Página **src/app/tasks/[id]/page.tsx** exibe os detalhes de uma tarefa específica.
+
+Essa página usa o id da URL para buscar e exibir os detalhes de uma tarefa. Inclui um botão para navegar até a página de edição.
+
+### 5.4 Página de Edição de Tarefas
+
+Página **src/app/tasks/[id]/edit/page.tsx** permite ao usuário atualizar uma tarefa existente.
+
+Essa página permite a edição de uma tarefa existente, populando os campos com os dados atuais da tarefa.
+
+### 5.5 Exclusão de Tarefas
+
+Para excluir uma tarefa, tem um botão de exclusão na página de detalhes **src/app/tasks/[id]/page.tsx**. Esse botão exclui a tarefa do Supabase e redireciona o usuário de volta para a lista de tarefas.
+
 ## Resumo
 
 Este guia continua a desenvolver um sistema completo de autenticação, completando as funcionalidades de login social com e-mail e senha, provedor social, recuperação de senha, 2FA com OTP e rotas privadas.
+
+O CRUD de tarefas tem a listagem, criação, visualização, edição e exclusão das tarefas após o login.
