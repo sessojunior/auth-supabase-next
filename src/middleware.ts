@@ -1,24 +1,19 @@
-// No Next.js, o controle de rotas privadas é feito utilizando um middleware para verificar se o usuário está autenticado.
-// O middleware src/middleware.ts é para proteger as rotas /admin e /dashboard.
-// Este middleware verifica se há uma sessão ativa do Supabase. Se não houver, ele redireciona o usuário para a página de login.
+// Middleware Global na Raiz do Projeto
+// src/middleware.ts
 
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+// Este middleware global aplica a lógica de proteção de rotas em todo o aplicativo,
+// garantindo que apenas usuários autenticados possam acessar certas rotas.
 
-export async function middleware(req: any) {
-	const {
-		data: { session },
-	} = await supabase.auth.getSession()
+import { type NextRequest } from "next/server"
+import { updateSession } from "@/utils/supabase/middleware"
 
-	const isAuthRoute = req.nextUrl.pathname.startsWith("/admin") || req.nextUrl.pathname.startsWith("/dashboard")
-
-	if (!session && isAuthRoute) {
-		return NextResponse.redirect(new URL("/login", req.url))
-	}
-
-	return NextResponse.next()
+export async function middleware(request: NextRequest) {
+	return await updateSession(request)
 }
 
 export const config = {
-	matcher: ["/admin/:path*", "/dashboard/:path*"],
+	matcher: [
+		"/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+		"/admin/:path*", // Protege todas as rotas dentro de "/admin" e subdiretórios
+	],
 }

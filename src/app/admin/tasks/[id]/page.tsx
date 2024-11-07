@@ -6,7 +6,7 @@
 
 import { useRouter } from "next/router"
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase/client"
+import { supabase } from "@/utils/supabase/client"
 
 // Definindo o tipo para uma tarefa
 type Task = {

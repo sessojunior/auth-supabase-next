@@ -3,7 +3,7 @@
 
 import { useRouter } from "next/router"
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase/client"
+import { supabase } from "@/utils/supabase/client"
 import { useForm } from "react-hook-form"
 
 // Tipo explícito para a tarefa

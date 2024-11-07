@@ -2,7 +2,7 @@
 // Essa página contém um formulário com React Hook Form, onde o usuário insere o título e a descrição da tarefa.
 
 import { useForm } from "react-hook-form"
-import { supabase } from "@/lib/supabase/client"
+import { supabase } from "@/utils/supabase/client"
 import { useRouter } from "next/router"
 import { useEffect, useState } from "react"
 

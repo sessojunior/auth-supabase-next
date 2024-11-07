@@ -14,13 +14,51 @@ Este projeto utiliza o Supabase, React Hook Form, Zod, Shadcn/UI para criar um s
 - Rotas privadas na administração
 - CRUD de tarefas
 
+## Estrutura do projeto
+
+Aqui está a estrutura do seu projeto com os diretórios e subdiretórios:
+
+```bash
+/src
+├── /app
+│   ├── /(auth)                        // Diretório para autenticação
+│   │   ├── /confirm
+│   │   │   └── page.tsx
+│   │   ├── /forgot-password
+│   │   │   └── page.tsx
+│   │   ├── /login
+│   │   │   └── page.tsx
+│   │   ├── /register
+│   │   │   └── page.tsx
+│   │   ├── /reset-password
+│   │   │   └── page.tsx
+│   │   └── /verify-otp
+│   │       └── page.tsx
+│   ├── /admin                         // Diretório para páginas protegidas (admin)
+│   │   ├── /profile
+│   │   │   └── page.tsx
+│   │   ├── /tasks
+│   │   │   └── page.tsx
+│   │   └── page.tsx                   // Página principal do admin (dashboard)
+├── /utils
+│   └── /supabase
+│       ├── client.ts                  // Configuração do cliente do Supabase para o navegador
+│       ├── server.ts                  // Configuração do cliente do Supabase para o servidor
+│       └── middleware.ts              // Função de middleware para gerenciamento de sessão
+├── middleware.ts                      // Arquivo de middleware para proteger as rotas
+```
+
 ## 1. Dependências
 
 Fazer as seguintes instalações de dependências:
 
 ```bash
 # Supabase
-npm install @supabase/supabase-js
+npm install @supabase/supabase-js @supabase/ssr @supabase/auth-helpers-nextjs
+
+# Armazenar o token no cookie
+npm install js-cookie
+npm install --save-dev @types/js-cookie
 
 # React Hook Form e Zod para formulários e validação
 npm install react-hook-form @hookform/resolvers zod
@@ -38,13 +76,13 @@ No painel do Supabase, ir para a seção _SQL Editor_ e executar o seguinte scri
 
 ```sql
 CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY, -- ID que será igual ao ID de autenticação do Supabase
   full_name VARCHAR(100) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
   gender VARCHAR(10),
   birth_date DATE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
 );
 
 CREATE TABLE tasks (
@@ -58,6 +96,115 @@ CREATE TABLE tasks (
 ```
 
 Essa estrutura cria uma tabela de usuários com os campos necessários, incluindo a data de nascimento e gênero, e uma tabela de tasks para o CRUD.
+
+Com essa estrutura, o id na tabela users corresponde ao id do Supabase Auth. Essa correspondência nos permite garantir que cada usuário autenticado tenha um perfil correspondente.
+
+### 2.1 Configurar o Modelo de E-mail no Supabase
+
+É importante configurar corretamente a confirmação de autenticação (confirmação de e-mail) no Supabase, especialmente se você ativou a confirmação de e-mail para novos usuários.
+
+#### 2.1.1 Passo 1: Painel do Supabase
+
+Acesse o painel do Supabase e vá para a seção **Authentication** > **Email Templates**.
+
+No modelo de confirmação de e-mail (**E-mail Templates** > **Confirm signup**), altere a URL padrão do e-mail de confirmação de:
+
+```bash
+{{ .ConfirmationURL }}
+```
+
+para:
+
+```bash
+{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup
+```
+
+Isso define o link de confirmação no e-mail para redirecionar o usuário à rota **/auth/confirm**, que lida com a confirmação e redirecionamento da página.
+
+#### 2.1.2 Passo 2: Manipulador de Rota para auth/confirm
+
+O manipulador **auth/confirm/route.ts** usa GET para processar a confirmação. Esse manipulador recebe o token_hash e o type do link de confirmação no e-mail. Ele usa esses parâmetros para verificar o código e autenticar o usuário.
+
+#### 2.1.3 Passo 3: Verificar o processo
+
+1. Cadastro e Confirmação de E-mail:
+
+Ao se registrar, o usuário deve receber um e-mail com o link de confirmação correto, que redireciona para **/auth/confirm**.
+
+2. Redirecionamento Após Confirmação:
+
+Após a confirmação bem-sucedida, o usuário deve ser redirecionado para a página **/admin**.
+
+Com essa configuração, a confirmação de e-mail será corretamente processada e o usuário será redirecionado após o login ou confirmação de e-mail.
+
+### 2.2 Configurar o Redirecionamento após Login com OAuth
+
+Para configurar o Redirecionamento no Supabase:
+
+1. Acesse o painel do Supabase.
+2. Navegue até **Authentication** > **URL Configuration**.
+3. No campo **Redirect URLs**, adicione uma URL que você quer como destino final após o login, por exemplo: **http://localhost:3000/admin**.
+
+Essa configuração ajuda o Supabase a redirecionar o usuário para a página **/admin** após o login.
+
+### 2.3 Configurações para permitir cadastrar todos os e-mails
+
+Para permitir que seja possível cadastrar e-mails de todos os usuários, caso dê algum erro assim: _Email address "usuario@gmail.com" cannot be used as it is not authorized_, é preciso fazer algumas configurações.
+
+O Supabase, por padrão, permite o envio de e-mails apenas para endereços autorizados, geralmente os membros da equipe do projeto. Isso é uma medida de segurança para evitar abusos durante o desenvolvimento inicial.
+
+Para resolver esse problema e permitir que usuários externos se cadastrem, é preciso configurar um servidor SMTP personalizado no Supabase. Isso permitirá o envio de e-mails de confirmação e outras notificações para qualquer endereço de e-mail.
+
+#### Obter SMTP do SendGrid
+
+1. Para obter esses dados, crie uma conta e faça o login
+2. Após isso, acesse **E-mail API** > **Integration Guide**.
+3. Selecione **SMTP Relay**.
+4. Crie um nome para a chave de API e salve-a em algum local seguro.
+5. Anote as seguintes informações:
+
+- Chave de API (API Key)
+- Host do servidor SMTP (Server): smtp.sendgrid.net
+- Porta (Ports): 25 ou 587 (para TLS) e 465 (para SSL)
+- Nome de usuário (Username): apikey
+- Senha (Password): [É a API Key]
+- Endereço de e-mail do remetente: silo.inpe@gmail.com
+
+#### Usar o SMTP do próprio Gmail
+
+Não é mais uma opção. O Gmail não oferece mais suporte a apps de terceiros ou a dispositivos em que você precisa compartilhar o nome de usuário e a senha do Google. O compartilhamento das credenciais da sua conta com terceiros facilita o acesso dos hackers.
+
+Mais informações do Google podem ser encontradas clicando neste [link](https://support.google.com/mail/answer/7126229?authuser=3&visit_id=638665317789803158-3866687335&hl=pt-BR&rd=1).
+
+#### Configure o SMTP no Supabase
+
+1. Acesse o painel do Supabase.
+2. Navegue até **Authentication** > **SMTP Settings**.
+3. Na seção **SMTP Settings**, ative **Enable Custom SMTP** e insira as informações obtidas:
+
+- Sender email: Endereço de e-mail do remetente. Ex: silo.inpe@gmail.com
+- Sender name: Nome que aparecerá como remetente. Ex: Silo
+- Host: Host do servidor SMTP. Ex: smtp.sendgrid.net
+- Port number: Porta do servidor SMTP. Ex: 465
+- Username: Nome de usuário do SMTP. Ex: apikey
+- Password: Senha do SMTP. É a API Key do SendGrid
+
+4. Salve as configurações.
+5. Teste o envio de e-mails:
+
+- Tente registrar um novo usuário para verificar se o e-mail de confirmação é enviado corretamente.
+
+Em caso de erro, teste se o envio com SMTP está funcionando com uma ferramenta de teste como a [SMTP Server](https://smtpserver.com/smtptest)
+
+#### Observações importantes
+
+**Limitações do SMTP padrão do Supabase**: O Supabase fornece um servidor SMTP padrão para testes, mas ele é limitado a enviar e-mails apenas para endereços autorizados (geralmente os membros da equipe) e possui restrições de taxa de envio. Portanto, não é adequado para uso em produção. SUPABASE
+
+**Configuração de SPF, DKIM e DMARC**: Para melhorar a entregabilidade dos e-mails e evitar que sejam marcados como spam, configure os registros SPF, DKIM e DMARC no seu domínio. Isso é geralmente feito no painel de controle do seu provedor de domínio.
+
+**Personalização de templates de e-mail**: Após configurar o SMTP, você pode personalizar os templates de e-mail enviados pelo Supabase para adequá-los à identidade visual da sua aplicação.
+
+Seguindo esses passos, você permitirá que usuários externos se registrem na sua aplicação, recebendo os e-mails necessários para confirmação e outras notificações.
 
 ## 3. Conexão do Frontend com o Supabase
 
@@ -82,13 +229,11 @@ Página **src/app/login/page.tsx** com um formulário de login, incluindo campos
 
 ### 4.3 Login Social (Google e Facebook)
 
-No Supabase, ativar o login social nas configurações de autenticação, configurando as credenciais do OAuth para Google e Facebook. Após configurar, obtenha as credenciais de cliente (**Client ID** e **Client Secret**) e adicione-as em variáveis de ambiente no arquivo **.env.local**:
+No Supabase, ativar o login social nas configurações de autenticação, configurando as credenciais do OAuth para o Google. Após configurar, obtenha as credenciais de cliente (**Client ID** e **Client Secret**) e adicione-as em variáveis de ambiente no arquivo **.env.local**:
 
 ```bash
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=seu-google-client-id
 NEXT_PUBLIC_GOOGLE_CLIENT_SECRET=seu-google-client-secret
-NEXT_PUBLIC_FACEBOOK_CLIENT_ID=seu-facebook-client-id
-NEXT_PUBLIC_FACEBOOK_CLIENT_SECRET=seu-facebook-client-secret
 ```
 
 O arquivo _src/app/login/page.tsx_, deverá ter os botões para login social, os ícones e o redirecionamento com Supabase.
@@ -98,16 +243,17 @@ O arquivo _src/app/login/page.tsx_, deverá ter os botões para login social, os
 **Passo a Passo:**
 
 1. Acesse o console de desenvolvedor do Google: https://console.developers.google.com/.
-2. Clique em **Select a project** e depois em **New Project** para criar um novo projeto.
-3. Defina um nome para o projeto e clique em **Create**.
-4. Com o projeto selecionado, vá até **OAuth consent screen** no menu lateral.
-5. Em **User Type**, escolha **External** e clique em **Create**.
-6. Preencha os detalhes da tela de consentimento, como nome do aplicativo, e-mail de contato e informações adicionais que deseja exibir aos usuários. Em seguida, clique em **Save and Continue**.
-7. Após configurar a tela de consentimento, vá até **Credentials** no menu lateral e clique em **Create Credentials** > **OAuth client ID**.
-8. Em **Application Type**, selecione **Web application**.
-9. Defina um nome para as credenciais.
-10. Em **Authorized redirect URIs**, adicione a URL de redirecionamento do Supabase: **_https://[SEU-SUPABASE-PROJECT-REF].supabase.co/auth/v1/callback_**. Substitua **_[YOUR-SUPABASE-PROJECT-REF]_** pelo ID do seu projeto Supabase.
-11. Clique em **Create** e o Google irá gerar o **Client ID** e **Client Secret**.
+2. Clique em **Selecionr um projeto** e depois em **Novo Projeto** para criar um novo projeto.
+3. Defina um nome para o projeto, por exemplo, _Silo_, e clique em **Criar**.
+4. Com o projeto selecionado, vá até **Tela de permissão OAuth** no menu lateral.
+5. Em **User Type**, escolha **Externo** e clique em **Criar**.
+6. Preencha os detalhes da tela de consentimento, com o nome do aplicativo, e-mail para suporte do usuário, e-mail de contato do desenvolvedor e informações adicionais que deseja exibir aos usuários. Em seguida, clique em **Salvar e Continuar**.
+7. Após configurar a tela de consentimento, vá até **Credenciais** no menu lateral e clique em **Criar Credenciais** > **ID do cliente OAuth**.
+8. Em **Tipo de aplicativo**, selecione **Aplicativo da Web**.
+9. Defina um nome para as credenciais, como por exemplo, _Cliente Web_. Anote o ID do cliente e a Chave secreta do cliente, pois serão usadas depois.
+10. Na lista de **IDs do Cliente OAuth 2.0**, no nome da credencial que criou, clique no ícone de caneta, **Editar cliente OAuth**.
+11. Em **URIs de redirecionamento autorizados**, clique em **Adicionar URI** para adicionar uma URL de redirecionamento do Supabase: **_https://[SEU-SUPABASE-PROJECT-REF].supabase.co/auth/v1/callback_**. Substitua **_[SEU-SUPABASE-PROJECT-REF]_** pelo ID do seu projeto Supabase e clique em **Salvar**.
+12. Para pegar novamente as credenciais, entre na tela de **Credenciais**, no menu lateral, clique no nome do cliente que você deu em **IDs do cliente OAuth 2.0**. Em **Additional information**, copie o **ID do cliente** e em **Chaves secretas do cliente** copie a **Chave secreta do cliente**.
 
 **Variáveis de Ambiente:** Salve as credenciais no arquivo **.env.local**:
 
@@ -120,15 +266,19 @@ NEXT_PUBLIC_GOOGLE_CLIENT_SECRET=seu-google-client-secret
 
 **Passo a Passo:**
 
-1. Acesse o Facebook for Developers: https://developers.facebook.com/.
-2. Clique em **My Apps** no canto superior direito e depois em **Create App**.
-3. Escolha **Consumer** e clique em **Next**.
-4. Defina um nome para o aplicativo, informe seu e-mail de contato e clique em **Create App ID**.
-5. No menu lateral, vá até **Settings** > **Basic** e preencha as informações adicionais do aplicativo.
-6. No menu lateral, vá para **Products** e adicione o **Facebook Login** como produto.
-7. Em **Client OAuth Settings**, configure o **Valid OAuth Redirect URIs** com a URL de redirecionamento do Supabase: **_https://[SEU-SUPABASE-PROJECT-REF].supabase.co/auth/v1/callback_**.
-8. Salve as alterações.
-9. Volte para **Settings** > **Basic** e copie o **App ID** e o **App Secret**.
+1. Acesse o Facebook for Developers: https://developers.facebook.com/ e faça login no Facebook.
+2. Clique em **Começar** e na tela de criação de conta do Meta for Developers, clique em **Continuar**, insira as informações solicitadas, número de telefone, confirme o e-mail, escolha o perfil **Desenvolvedor** e pronto.
+3. Após criar a conta de desenvolvedor, clique em **Meus apps** no canto superior direito e depois em **Criar aplicativo**.
+4. Em Casos de uso, selecione **Autenticar e solicitar dados de usuários com o Login do Facebook** e clique em **Avançar**.
+5. Em **A qual portfólio empresarial você quer conectar o app?** deixe selecionado **Ainda não quero me conectar a um portfólio empresarial.** e clique em **Avançar**.
+6. Defina um nome para o aplicativo, como por exemolo, _Silo_, e informe o e-mail de contato e clique em **Avançar**.
+7. A Meta informa que é necessário fazer a verificação da empresa e análise do app para publicar o app e manter o acesso aos dados. Clique em **Acessar painel**.
+8. No menu lateral, vá até **Configurações do app** > **Básico** e preencha as informações adicionais do aplicativo.
+9. No menu lateral, vá para **Casos de uso** e em **Autenticar e solicitar dados de usuários com o Login do Facebook** adicione o **Facebook Login** como produto.
+10. Em **Client OAuth Settings**, clique em **Personalizar**.
+11. Em **Login com o Facebook**, clique em **Configurações** e em **Validador da URI de redirecionamento**, configure a **URI de redirecionamento para verificar** com a URL de redirecionamento do Supabase: **_https://[SEU-SUPABASE-PROJECT-REF].supabase.co/auth/v1/callback_**.
+12. Clique em **Verificar URI** para salvar as alterações.
+13. Volte para **Configurações do app** > **Básico** e copie o **ID do Aplicativo** e a **Chave Secreta do Aplicativo**.
 
 **Variáveis de Ambiente:** Salve as credenciais no arquivo **.env.local**:
 
@@ -142,9 +292,9 @@ Após salvar as credenciais no arquivo **.env.local**, você precisa configurar 
 
 1. Acesse o painel do Supabase em https://app.supabase.io/.
 2. Selecione o seu projeto.
-3. Vá para **Authentication** > **Settings**.
-4. Na seção **External OAuth Providers**, ative **Google** e **Facebook**.
-5. Insira o **Client ID** e o **Client Secret** para cada provedor, usando os valores configurados.
+3. No menu lateral clique em **Authentication** e no menu lateral a seguir em **Providers**.
+4. Na seção **Auth Providers**, ative **Google** e **Facebook**.
+5. Insira o **Client ID** e o **Client Secret** para cada provedor, usando os valores configurados e salve as alterações.
 
 #### Atualizar o Supabase no Código
 
