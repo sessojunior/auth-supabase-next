@@ -20,32 +20,34 @@
 // 4. Redireciona o Usuário:
 //    Ao final, o redirecionamento acontece para a página protegida(/admin), com o usuário já logado.
 
-import { type EmailOtpType } from "@supabase/supabase-js"
 import { type NextRequest } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 
 export async function GET(request: NextRequest) {
 	const { searchParams } = new URL(request.url)
-	const code = searchParams.get("code") // Supabase usa 'code' para o token de confirmação
-	const next = "/admin" // Página de redirecionamento após confirmação
+	const code = searchParams.get("code")
+	const next = "/admin" // Página de redirecionamento após a confirmação bem-sucedida
 
 	if (code) {
 		const supabase = await createClient()
-		const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+		// Tenta trocar o código de verificação por uma sessão ativa
+		const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
 
 		if (error) {
 			console.error("Erro ao confirmar e-mail:", error.message)
-			redirect("/error") // Redireciona para uma página de erro se a confirmação falhar
+			redirect("/error") // Redireciona para uma página de erro em caso de falha
 			return
 		}
 
-		// Se a sessão for criada com sucesso, redirecione o usuário para a página /admin
-		if (data) {
+		// Se a sessão for criada com sucesso, redireciona o usuário para a página /admin
+		if (sessionData) {
 			redirect(next)
 			return
 		}
 	}
 
-	redirect("/") // Redireciona para a página inicial se o código estiver ausente ou inválido
+	// Se o código for inválido ou ausente, redireciona para a página inicial
+	redirect("/")
 }

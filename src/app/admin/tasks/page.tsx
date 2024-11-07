@@ -4,8 +4,6 @@
 // Esta página exibe uma lista de tarefas para usuários que fizeram login.
 // A sessão do usuário é verificada no lado do servidor.
 
-// src/app/admin/tasks/page.tsx
-
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 import LogoutButton from "@/components/button-logout"
@@ -46,19 +44,9 @@ export default async function TasksPage() {
 			) : (
 				<p>Nenhuma tarefa encontrada.</p>
 			)}
-			<p>
-				<Link href='/login' className='text-blue-500 underline'>
-					Ir para a página de login
-				</Link>
-			</p>
-			<p>
+			<p className='mt-4'>
 				<Link href='/admin/profile' className='text-blue-500 underline'>
-					Ir para a página privada de admin - profile
-				</Link>
-			</p>
-			<p>
-				<Link href='/admin/tasks' className='text-blue-500 underline'>
-					Ir para a página privada de admin - tasks
+					Ir para a página privada de perfil do usuário
 				</Link>
 			</p>
 		</div>

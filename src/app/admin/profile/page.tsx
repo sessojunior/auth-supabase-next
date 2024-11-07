@@ -10,17 +10,20 @@ import LogoutButton from "@/components/button-logout"
 import Link from "next/link"
 
 export default async function ProfilePage() {
-	// Cria o cliente Supabase
 	const supabase = await createClient()
-
-	// Verifica a autenticação do usuário
 	const {
 		data: { user },
 	} = await supabase.auth.getUser()
 
-	// Redireciona para a página de login se o usuário não estiver autenticado
 	if (!user) {
 		redirect("/login")
+	}
+
+	const { data: tasks, error } = await supabase.from("tasks").select("*").eq("user_id", user.id)
+
+	if (error) {
+		console.error("Erro ao buscar tarefas:", error.message)
+		return <p>Erro ao carregar as tarefas.</p>
 	}
 
 	return (
@@ -31,19 +34,9 @@ export default async function ProfilePage() {
 			</div>
 			<h1>Bem-vindo, {user.email}</h1>
 			<p>Esta é sua página de perfil.</p>
-			<p>
-				<Link href='/login' className='text-blue-500 underline'>
-					Ir para a página de login
-				</Link>
-			</p>
-			<p>
-				<Link href='/admin/profile' className='text-blue-500 underline'>
-					Ir para a página privada de admin - profile
-				</Link>
-			</p>
-			<p>
+			<p className='mt-4'>
 				<Link href='/admin/tasks' className='text-blue-500 underline'>
-					Ir para a página privada de admin - tasks
+					Ir para a página privada de tasks
 				</Link>
 			</p>
 		</div>

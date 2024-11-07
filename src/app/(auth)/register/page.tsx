@@ -41,16 +41,17 @@ export default function RegisterPage() {
 		const { fullName, email, password, gender, birthDate } = data
 		setRegistrationError(null)
 
-		// Verificação de e-mail já cadastrado
+		// Verificação de e-mail já cadastrado usando o SDK
 		const { data: existingUser, error: emailCheckError } = await supabase.from("users").select("email").eq("email", email).single()
 
 		if (emailCheckError && emailCheckError.code !== "PGRST116") {
 			console.error("Erro ao verificar e-mail:", emailCheckError.message)
+			setRegistrationError("Erro ao verificar e-mail. Tente novamente.")
 			return
 		}
 
 		if (existingUser) {
-			setError("email", { type: "manual", message: "Este e-mail já existente. Faça login." })
+			setError("email", { type: "manual", message: "Este e-mail já existe. Faça login." })
 			return
 		}
 
@@ -58,6 +59,9 @@ export default function RegisterPage() {
 		const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
 			email,
 			password,
+			options: {
+				emailRedirectTo: `${window.location.origin}/confirm`, // URL para redirecionar após a confirmação do e-mail
+			},
 		})
 
 		const user = signUpData?.user

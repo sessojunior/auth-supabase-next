@@ -28,14 +28,14 @@ export default async function AdminPage() {
 			</div>
 			<h1>Bem-vindo, {user.email}</h1>
 			<p>Esta é sua página da administração.</p>
-			<p>
+			<p className='mt-4'>
 				<Link href='/admin/profile' className='text-blue-500 underline'>
-					Ir para a página privada de admin - profile
+					Ir para a página privada de perfil do usuário
 				</Link>
 			</p>
-			<p>
+			<p className='mt-4'>
 				<Link href='/admin/tasks' className='text-blue-500 underline'>
-					Ir para a página privada de admin - tasks
+					Ir para a página privada de tasks
 				</Link>
 			</p>
 		</div>
